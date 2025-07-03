@@ -44,6 +44,7 @@ curl -L https://github.com/better-ecosystem/better-search/releases/download/v1.0
 
 ## Usage
 - You can launch the app with the `search` command or bind a key to open it with the same command for quick use
+- Check the wiki to config launch 
 
 ---
 

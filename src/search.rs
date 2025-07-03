@@ -7,8 +7,6 @@ use std::env;
 
 pub fn search_apps(query: &str) -> Vec<(String, String, Image)> {
     let mut results = Vec::new();
-    let home_apps = format!("{}/.local/share/applications", env::var("HOME").unwrap_or_default());
-    let app_dirs = vec!["/usr/share/applications", &home_apps];
 
     for dir in app_dirs {
         let path = Path::new(&dir);

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use toml::Value;
 use std::path::PathBuf;
+use shellexpand;
 
 pub struct OpenersConfig {
     pub openers: HashMap<String, String>,
@@ -27,14 +28,16 @@ pub fn get_openers() -> OpenersConfig {
             }
 
             if let Some(array) = parsed.get("config")
-                                       .and_then(|v| v.get("app_dirs"))
-                                       .and_then(|v| v.as_array()) {
-                for item in array {
-                    if let Some(path_str) = item.as_str() {
-                        app_dirs_vec.push(path_str.to_string());
-                    }
+                           .and_then(|v| v.get("app_dirs"))
+                           .and_then(|v| v.as_array()) {
+            for item in array {
+                if let Some(path_str) = item.as_str() {
+                    let expanded = shellexpand::tilde(path_str).to_string();
+                    app_dirs_vec.push(expanded);
                 }
             }
+        }
+
         }
     }
 

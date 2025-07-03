@@ -35,7 +35,7 @@ Dependencies
 <summary><b>Quick Install</b></summary>
 
   ```
-curl -L https://github.com/better-ecosystem/better-search/releases/download/v1.0.0/search -o ~/.local/bin/search && chmod +x ~/.local/bin/search
+curl -L https://github.com/better-ecosystem/better-search/releases/download/v1.0.1/search -o ~/.local/bin/search && chmod +x ~/.local/bin/search
 ```
 
 </details>

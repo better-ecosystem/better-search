@@ -1,6 +1,6 @@
 [package]
-name = "Better-Search"
-version = "1.0.0"
+name = "better-search"
+version = "1.0.0-alpha"
 edition = "2021"
 
 [dependencies]

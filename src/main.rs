@@ -17,12 +17,14 @@ use glib::Propagation::{Proceed, Stop};
 mod ui;
 use ui::{apply_css, build_main_ui};
 
+mod files;
+
 
 fn main() {
     let app = Application::new(Some("com.better.search"), Default::default());
 
     app.connect_activate(|app| {
-        apply_css(); 
+        apply_css();
         let (window, entry, mode_label, result_box) = build_main_ui(app);
         setup_search_ui(&entry, &result_box, &mode_label, &window);
         window.show_all();
@@ -32,49 +34,6 @@ fn main() {
     app.run();
 }
 
-pub fn search_files(query: &str) -> Vec<(String, String, Image)> {
-    let mut results = Vec::new();
-
-    let home = env::var("HOME").unwrap_or_else(|_| String::from("~/"));
-    let output = Command::new("find")
-        .arg(&home)
-        .arg("-maxdepth")
-        .arg("10")
-        .arg("-type")
-        .arg("f")
-        .arg("-iname")
-        .arg(format!("*{}*", query))
-        .output();
-
-    if let Ok(output) = output {
-        if output.status.success() {
-            if let Ok(stdout) = String::from_utf8(output.stdout) {
-                for line in stdout.lines().take(200) {
-                    let path = line.trim().to_string();
-
-                    if fs::metadata(&path).is_err() {
-                        continue;
-                    }
-
-                    let name = Path::new(&path)
-                        .file_name()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("Unknown")
-                        .to_string();
-
-                    let icon = get_file_icon(&path);
-                    results.push((name, path, icon));
-                }
-            }
-        }
-    }
-
-    // Deduplicate exact paths
-    results.sort_by(|a, b| a.1.cmp(&b.1));
-    results.dedup_by(|a, b| a.1 == b.1);
-
-    results
-}
 
 
 pub fn search_apps(query: &str) -> Vec<(String, String, Image)> {
@@ -82,9 +41,7 @@ pub fn search_apps(query: &str) -> Vec<(String, String, Image)> {
     let openers_config = get_openers();
     let app_dirs = openers_config.app_dirs.clone();
 
- 
-
-    for dir in app_dirs {    
+    for dir in app_dirs {
         let path = Path::new(&dir);
         if !path.exists() {
             continue;
@@ -111,38 +68,14 @@ pub fn search_apps(query: &str) -> Vec<(String, String, Image)> {
     results
 }
 
-
-fn get_file_icon(filepath: &str) -> Image {
-    let guessed = gio::content_type_guess(Some(Path::new(filepath)), &[]);
-    let content_type = guessed.0;
-    let icon = gio::content_type_get_icon(&content_type);
-    icon_to_image(&icon)
-}
-
-fn icon_to_image(icon: &Icon) -> Image {
-    use gio::prelude::Cast;
-
-    if let Some(themed) = icon.downcast_ref::<ThemedIcon>() {
-        if let Some(name) = themed.names().get(0) {
-            return Image::from_icon_name(Some(name.as_str()), gtk::IconSize::SmallToolbar);
-        }
-    } else if let Some(file_icon) = icon.downcast_ref::<FileIcon>() {
-        if let Some(path) = file_icon.file().path() {
-            if let Ok(pixbuf) = Pixbuf::from_file_at_size(path, 24, 24) {
-                return Image::from_pixbuf(Some(&pixbuf));
-            }
-        }
-    }
-
-    Image::from_icon_name(Some("application-x-executable"), gtk::IconSize::SmallToolbar)
-}
-
 pub fn web_search(query: &str) {
     let url = format!("https://www.duckduckgo.com/search?q={}", query);
     Command::new("xdg-open").arg(&url).spawn().ok();
 }
 
 use shell_escape::escape;
+
+use crate::files::get_files;
 
 pub fn open_with_configured_app(filepath: &str) {
     let ext = Path::new(filepath)
@@ -263,7 +196,7 @@ pub fn setup_search_ui(entry: &Entry, result_box: &GtkBox, mode_label: &Label, w
             let results = if mode_app.get() {
                 search_apps(&query)
             } else {
-                search_files(&query)
+                get_files(&query)
             };
 
             match results.get(selected_index.get()) {
@@ -298,7 +231,7 @@ entry.connect_changed(clone!(@weak result_box, @strong mode_app, @strong selecte
     let results = if mode_app.get() {
     search_apps(&query)
 } else {
-    search_files(&query)
+    get_files(&query)
 };
 
 if results.is_empty() {
@@ -365,7 +298,7 @@ fn refresh_results(query: String, result_box: &GtkBox, mode_app: &Cell<bool>, se
     let results = if mode_app.get() {
         search_apps(&query)
     } else {
-        search_files(&query)
+        get_files(&query)
     };
 
     for (name, path, icon) in results.into_iter().take(50) {
